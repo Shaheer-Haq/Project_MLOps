@@ -1,0 +1,71 @@
+version: '3.7'
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    networks:
+      - airflow_network
+
+  airflow-webserver:
+    image: apache/airflow:2.7.3
+    container_name: airflow-webserver
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__SECRET_KEY: 'aYwS0BC_-DOcHEyvXm_-Ggmy6ZkcvFn-Yf0xtPDPQ3s='
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+    ports:
+      - "8083:8080"
+    networks:
+      - airflow_network
+    command: >
+      bash -c "
+        pip install scikit-learn pandas joblib &&
+        airflow db upgrade &&
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.org --password admin_password || true &&
+        airflow webserver
+      "
+
+
+  airflow-scheduler:
+    image: apache/airflow:2.7.3
+    container_name: airflow-scheduler
+    restart: always
+    depends_on:
+      - airflow-webserver
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__SECRET_KEY: 'aYwS0BC_-DOcHEyvXm_-Ggmy6ZkcvFn-Yf0xtPDPQ3s='
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+    command: >
+      bash -c "
+        pip install scikit-learn pandas joblib &&
+        airflow scheduler
+      "
+    networks:
+      - airflow_network
+
+volumes:
+  postgres-db-volume:
+
+networks:
+  airflow_network:
+    driver: bridge
