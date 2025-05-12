@@ -13,19 +13,12 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Pull Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKERHUB_REPO}")
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                script {
+                    // Pull the Docker image from Docker Hub
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
-                        docker.image("${DOCKERHUB_REPO}").push('latest')
+                        docker.image("${DOCKERHUB_REPO}:latest").pull()
                     }
                 }
             }
